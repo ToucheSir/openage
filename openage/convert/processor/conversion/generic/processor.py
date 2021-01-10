@@ -5,53 +5,48 @@
 """
 Convert data from AoC to openage formats.
 """
-from ..processor import GenericProcessor
 from .....log import info
-from ....entity_object.conversion.aoc.genie_civ import GenieCivilizationGroup
-from ....entity_object.conversion.aoc.genie_civ import GenieCivilizationObject
-from ....entity_object.conversion.aoc.genie_connection import GenieAgeConnection,\
+from ....entity_object.conversion.generic.genie_civ import GenieCivilizationGroup
+from ....entity_object.conversion.generic.genie_civ import GenieCivilizationObject
+from ....entity_object.conversion.generic.genie_connection import GenieAgeConnection,\
     GenieBuildingConnection, GenieUnitConnection, GenieTechConnection
-from ....entity_object.conversion.aoc.genie_effect import GenieEffectObject,\
+from ....entity_object.conversion.generic.genie_effect import GenieEffectObject,\
     GenieEffectBundle
-from ....entity_object.conversion.aoc.genie_graphic import GenieGraphic
-from ....entity_object.conversion.aoc.genie_object_container import GenieObjectContainer
-from ....entity_object.conversion.aoc.genie_sound import GenieSound
-from ....entity_object.conversion.aoc.genie_tech import AgeUpgrade,\
+from ....entity_object.conversion.generic.genie_graphic import GenieGraphic
+from ....entity_object.conversion.generic.genie_object_container import GenieObjectContainer
+from ....entity_object.conversion.generic.genie_sound import GenieSound
+from ....entity_object.conversion.generic.genie_tech import AgeUpgrade,\
     UnitUnlock, UnitLineUpgrade, CivBonus
-from ....entity_object.conversion.aoc.genie_tech import BuildingLineUpgrade
-from ....entity_object.conversion.aoc.genie_tech import GenieTechObject
-from ....entity_object.conversion.aoc.genie_tech import StatUpgrade, InitiatedTech,\
+from ....entity_object.conversion.generic.genie_tech import BuildingLineUpgrade
+from ....entity_object.conversion.generic.genie_tech import GenieTechObject
+from ....entity_object.conversion.generic.genie_tech import StatUpgrade, InitiatedTech,\
     BuildingUnlock, NodeTech
-from ....entity_object.conversion.aoc.genie_terrain import GenieTerrainGroup
-from ....entity_object.conversion.aoc.genie_terrain import GenieTerrainObject
-from ....entity_object.conversion.aoc.genie_unit import GenieAmbientGroup,\
+from ....entity_object.conversion.generic.genie_terrain import GenieTerrainGroup
+from ....entity_object.conversion.generic.genie_terrain import GenieTerrainObject
+from ....entity_object.conversion.generic.genie_unit import GenieAmbientGroup,\
     GenieGarrisonMode
-from ....entity_object.conversion.aoc.genie_unit import GenieStackBuildingGroup,\
+from ....entity_object.conversion.generic.genie_unit import GenieStackBuildingGroup,\
     GenieBuildingLineGroup
-from ....entity_object.conversion.aoc.genie_unit import GenieUnitLineGroup,\
+from ....entity_object.conversion.generic.genie_unit import GenieUnitLineGroup,\
     GenieUnitTransformGroup, GenieMonkGroup
-from ....entity_object.conversion.aoc.genie_unit import GenieUnitObject
-from ....entity_object.conversion.aoc.genie_unit import GenieUnitTaskGroup,\
+from ....entity_object.conversion.generic.genie_unit import GenieUnitObject
+from ....entity_object.conversion.generic.genie_unit import GenieUnitTaskGroup,\
     GenieVillagerGroup
-from ....entity_object.conversion.aoc.genie_unit import GenieVariantGroup
+from ....entity_object.conversion.generic.genie_unit import GenieVariantGroup
 from ....service.debug_info import debug_converter_objects,\
     debug_converter_object_groups
 from ....service.read.nyan_api_loader import load_api
-from ....value_object.conversion.aoc.internal_nyan_names import AMBIENT_GROUP_LOOKUPS,\
-    VARIANT_GROUP_LOOKUPS
-from .media_subprocessor import AoCMediaSubprocessor
-from .modpack_subprocessor import AoCModpackSubprocessor
-from .nyan_subprocessor import AoCNyanSubprocessor
-from .pregen_processor import AoCPregenSubprocessor
 
+class GenericProcessor:
+    def __init__(self, pregen_sub, nyan_sub, media_sub, modpack_sub, ambients, variants):
+        self.pregen_sub = pregen_sub
+        self.nyan_sub = nyan_sub
+        self.media_sub = media_sub
+        self.modpack_sub = modpack_sub
+        self.ambients = ambients
+        self.variants = variants
 
-class AoCProcessor(GenericProcessor):
-    """
-    Main processor for converting data from AoC.
-    """
-
-    @classmethod
-    def convert(cls, gamespec, args, string_resources, existing_graphics):
+    def convert(self, gamespec, args, string_resources, existing_graphics):
         """
         Input game speification and media here and get a set of
         modpacks back.
@@ -66,25 +61,21 @@ class AoCProcessor(GenericProcessor):
         info("Starting conversion...")
 
         # Create a new container for the conversion process
-        dataset = cls._pre_processor(
-            gamespec,
-            args.game_version,
-            string_resources,
-            existing_graphics
+        dataset = self._pre_processor(
+            gamespec, args.game_version, string_resources, existing_graphics
         )
         debug_converter_objects(args.debugdir, args.debug_info, dataset)
 
         # Create the custom openae formats (nyan, sprite, terrain)
-        dataset = cls._processor(dataset)
+        dataset = self._processor(dataset)
         debug_converter_object_groups(args.debugdir, args.debug_info, dataset)
 
         # Create modpack definitions
-        modpacks = cls._post_processor(dataset)
+        modpacks = self._post_processor(dataset)
 
         return modpacks
 
-    @classmethod
-    def _pre_processor(cls, gamespec, game_version, string_resources, existing_graphics):
+    def _pre_processor(self, gamespec, game_version, string_resources, existing_graphics):
         """
         Store data from the reader in a conversion container.
 
@@ -100,23 +91,22 @@ class AoCProcessor(GenericProcessor):
 
         info("Extracting Genie data...")
 
-        cls.extract_genie_units(gamespec, dataset)
-        cls.extract_genie_techs(gamespec, dataset)
-        cls.extract_genie_effect_bundles(gamespec, dataset)
-        cls.sanitize_effect_bundles(dataset)
-        cls.extract_genie_civs(gamespec, dataset)
-        cls.extract_age_connections(gamespec, dataset)
-        cls.extract_building_connections(gamespec, dataset)
-        cls.extract_unit_connections(gamespec, dataset)
-        cls.extract_tech_connections(gamespec, dataset)
-        cls.extract_genie_graphics(gamespec, dataset)
-        cls.extract_genie_sounds(gamespec, dataset)
-        cls.extract_genie_terrains(gamespec, dataset)
+        self.extract_genie_units(gamespec, dataset)
+        self.extract_genie_techs(gamespec, dataset)
+        self.extract_genie_effect_bundles(gamespec, dataset)
+        self.sanitize_effect_bundles(dataset)
+        self.extract_genie_civs(gamespec, dataset)
+        self.extract_age_connections(gamespec, dataset)
+        self.extract_building_connections(gamespec, dataset)
+        self.extract_unit_connections(gamespec, dataset)
+        self.extract_tech_connections(gamespec, dataset)
+        self.extract_genie_graphics(gamespec, dataset)
+        self.extract_genie_sounds(gamespec, dataset)
+        self.extract_genie_terrains(gamespec, dataset)
 
         return dataset
 
-    @classmethod
-    def _processor(cls, full_data_set):
+    def _processor(self, full_data_set):
         """
         Transfer structures used in Genie games to more openage-friendly
         Python objects.
@@ -129,36 +119,35 @@ class AoCProcessor(GenericProcessor):
 
         info("Creating API-like objects...")
 
-        cls.create_unit_lines(full_data_set)
-        cls.create_extra_unit_lines(full_data_set)
-        cls.create_building_lines(full_data_set)
-        cls.create_villager_groups(full_data_set)
-        cls.create_ambient_groups(full_data_set)
-        cls.create_variant_groups(full_data_set)
-        cls.create_terrain_groups(full_data_set)
-        cls.create_tech_groups(full_data_set)
-        cls.create_node_tech_groups(full_data_set)
-        cls.create_civ_groups(full_data_set)
+        self.create_unit_lines(full_data_set)
+        self.create_extra_unit_lines(full_data_set)
+        self.create_building_lines(full_data_set)
+        self.create_villager_groups(full_data_set)
+        self.create_ambient_groups(full_data_set)
+        self.create_variant_groups(full_data_set)
+        self.create_terrain_groups(full_data_set)
+        self.create_tech_groups(full_data_set)
+        self.create_node_tech_groups(full_data_set)
+        self.create_civ_groups(full_data_set)
 
         info("Linking API-like objects...")
 
-        cls.link_building_upgrades(full_data_set)
-        cls.link_creatables(full_data_set)
-        cls.link_researchables(full_data_set)
-        cls.link_civ_uniques(full_data_set)
-        cls.link_gatherers_to_dropsites(full_data_set)
-        cls.link_garrison(full_data_set)
-        cls.link_trade_posts(full_data_set)
-        cls.link_repairables(full_data_set)
+        self.link_building_upgrades(full_data_set)
+        self.link_creatables(full_data_set)
+        self.link_researchables(full_data_set)
+        self.link_civ_uniques(full_data_set)
+        self.link_gatherers_to_dropsites(full_data_set)
+        self.link_garrison(full_data_set)
+        self.link_trade_posts(full_data_set)
+        self.link_repairables(full_data_set)
 
         info("Generating auxiliary objects...")
 
-        AoCPregenSubprocessor.generate(full_data_set)
+        self.pregen_sub.generate(full_data_set)
 
         return full_data_set
 
-    @classmethod
-    def _post_processor(cls, full_data_set):
+    def _post_processor(self, full_data_set):
         """
         Convert API-like Python objects to nyan.
 
@@ -170,15 +159,15 @@ class AoCProcessor(GenericProcessor):
 
         info("Creating nyan objects...")
 
-        AoCNyanSubprocessor.convert(full_data_set)
+        self.nyan_sub.convert(full_data_set)
 
         info("Creating requests for media export...")
 
-        AoCMediaSubprocessor.convert(full_data_set)
+        self.media_sub.convert(full_data_set)
 
-        return AoCModpackSubprocessor.get_modpacks(full_data_set)
+        return self.modpack_sub.get_modpacks(full_data_set)
 
-    @staticmethod
+    
     def extract_genie_units(gamespec, full_data_set):
         """
         Extract units from the game data.
@@ -217,7 +206,7 @@ class AoCProcessor(GenericProcessor):
             unit_commands = raw_unit_headers[unit_id]["unit_commands"]
             unit.add_member(unit_commands)
 
-    @staticmethod
+    
     def extract_genie_techs(gamespec, full_data_set):
         """
         Extract techs from the game data.
@@ -240,7 +229,7 @@ class AoCProcessor(GenericProcessor):
 
             index += 1
 
-    @staticmethod
+    
     def extract_genie_effect_bundles(gamespec, full_data_set):
         """
         Extract effects and effect bundles from the game data.
@@ -283,7 +272,7 @@ class AoCProcessor(GenericProcessor):
 
             index_bundle += 1
 
-    @staticmethod
+    
     def extract_genie_civs(gamespec, full_data_set):
         """
         Extract civs from the game data.
@@ -309,7 +298,7 @@ class AoCProcessor(GenericProcessor):
 
             index += 1
 
-    @staticmethod
+    
     def extract_age_connections(gamespec, full_data_set):
         """
         Extract age connections from the game data.
@@ -327,7 +316,7 @@ class AoCProcessor(GenericProcessor):
             connection = GenieAgeConnection(age_id, full_data_set, members=connection_members)
             full_data_set.age_connections.update({connection.get_id(): connection})
 
-    @staticmethod
+    
     def extract_building_connections(gamespec, full_data_set):
         """
         Extract building connections from the game data.
@@ -346,7 +335,7 @@ class AoCProcessor(GenericProcessor):
                                                  members=connection_members)
             full_data_set.building_connections.update({connection.get_id(): connection})
 
-    @staticmethod
+    
     def extract_unit_connections(gamespec, full_data_set):
         """
         Extract unit connections from the game data.
@@ -364,7 +353,7 @@ class AoCProcessor(GenericProcessor):
             connection = GenieUnitConnection(unit_id, full_data_set, members=connection_members)
             full_data_set.unit_connections.update({connection.get_id(): connection})
 
-    @staticmethod
+    
     def extract_tech_connections(gamespec, full_data_set):
         """
         Extract tech connections from the game data.
@@ -382,7 +371,7 @@ class AoCProcessor(GenericProcessor):
             connection = GenieTechConnection(tech_id, full_data_set, members=connection_members)
             full_data_set.tech_connections.update({connection.get_id(): connection})
 
-    @staticmethod
+    
     def extract_genie_graphics(gamespec, full_data_set):
         """
         Extract graphic definitions from the game data.
@@ -413,7 +402,7 @@ class AoCProcessor(GenericProcessor):
         for genie_graphic in full_data_set.genie_graphics.values():
             genie_graphic.detect_subgraphics()
 
-    @staticmethod
+    
     def extract_genie_sounds(gamespec, full_data_set):
         """
         Extract sound definitions from the game data.
@@ -431,7 +420,7 @@ class AoCProcessor(GenericProcessor):
             sound = GenieSound(sound_id, full_data_set, members=sound_members)
             full_data_set.genie_sounds.update({sound.get_id(): sound})
 
-    @staticmethod
+    
     def extract_genie_terrains(gamespec, full_data_set):
         """
         Extract terrains from the game data.
@@ -452,7 +441,7 @@ class AoCProcessor(GenericProcessor):
 
             index += 1
 
-    @staticmethod
+    
     def create_unit_lines(full_data_set):
         """
         Sort units into lines, based on information in the unit connections.
@@ -545,7 +534,7 @@ class AoCProcessor(GenericProcessor):
         # Store the lines in the data set with the line ids as keys
         full_data_set.unit_lines_vertical_ref.update(pre_unit_lines)
 
-    @staticmethod
+    
     def create_extra_unit_lines(full_data_set):
         """
         Create additional units that are not in the unit connections.
@@ -563,7 +552,7 @@ class AoCProcessor(GenericProcessor):
             full_data_set.unit_lines.update({unit_line.get_id(): unit_line})
             full_data_set.unit_ref.update({unit_id: unit_line})
 
-    @staticmethod
+    
     def create_building_lines(full_data_set):
         """
         Establish building lines, based on information in the building connections.
@@ -685,7 +674,7 @@ class AoCProcessor(GenericProcessor):
                 building_line.add_unit(building, after=previous_building_id)
                 full_data_set.unit_ref.update({building_id: building_line})
 
-    @staticmethod
+    
     def sanitize_effect_bundles(full_data_set):
         """
         Remove garbage data from effect bundles.
@@ -725,7 +714,7 @@ class AoCProcessor(GenericProcessor):
             bundle.effects = sanitized_effects
             bundle.sanitized = True
 
-    @staticmethod
+    
     def create_tech_groups(full_data_set):
         """
         Create techs from tech connections and unit upgrades/unlocks
@@ -876,7 +865,7 @@ class AoCProcessor(GenericProcessor):
             full_data_set.tech_groups.update({civ_bonus.get_id(): civ_bonus})
             full_data_set.civ_boni.update({civ_bonus.get_id(): civ_bonus})
 
-    @staticmethod
+    
     def create_node_tech_groups(full_data_set):
         """
         Create tech condition chains for age upgrades
@@ -938,7 +927,7 @@ class AoCProcessor(GenericProcessor):
 
                 node_techs.remove(current_tech)
 
-    @staticmethod
+    
     def create_civ_groups(full_data_set):
         """
         Create civilization groups from civ objects.
@@ -958,7 +947,7 @@ class AoCProcessor(GenericProcessor):
 
             index += 1
 
-    @staticmethod
+    
     def create_villager_groups(full_data_set):
         """
         Create task groups and assign the relevant male and female group to a
@@ -1010,8 +999,8 @@ class AoCProcessor(GenericProcessor):
         for unit_id in unit_ids:
             full_data_set.unit_ref.update({unit_id: villager})
 
-    @staticmethod
-    def create_ambient_groups(full_data_set):
+    
+    def create_ambient_groups(self, full_data_set):
         """
         Create ambient groups, mostly for resources and scenery.
 
@@ -1020,17 +1009,16 @@ class AoCProcessor(GenericProcessor):
                               process.
         :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
         """
-        ambient_ids = AMBIENT_GROUP_LOOKUPS.keys()
         genie_units = full_data_set.genie_units
 
-        for ambient_id in ambient_ids:
+        for ambient_id in self.ambients.keys():
             ambient_group = GenieAmbientGroup(ambient_id, full_data_set)
             ambient_group.add_unit(genie_units[ambient_id])
             full_data_set.ambient_groups.update({ambient_group.get_id(): ambient_group})
             full_data_set.unit_ref.update({ambient_id: ambient_group})
 
-    @staticmethod
-    def create_variant_groups(full_data_set):
+    
+    def create_variant_groups(self, full_data_set):
         """
         Create variant groups.
 
@@ -1039,9 +1027,7 @@ class AoCProcessor(GenericProcessor):
                               process.
         :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
         """
-        variants = VARIANT_GROUP_LOOKUPS
-
-        for group_id, variant in variants.items():
+        for group_id, variant in self.variants.items():
             variant_group = GenieVariantGroup(group_id, full_data_set)
             full_data_set.variant_groups.update({variant_group.get_id(): variant_group})
 
@@ -1049,7 +1035,7 @@ class AoCProcessor(GenericProcessor):
                 variant_group.add_unit(full_data_set.genie_units[variant_id])
                 full_data_set.unit_ref.update({variant_id: variant_group})
 
-    @staticmethod
+    
     def create_terrain_groups(full_data_set):
         """
         Create terrain groups.
@@ -1075,7 +1061,7 @@ class AoCProcessor(GenericProcessor):
                 terrain_group = GenieTerrainGroup(terrain.get_id(), full_data_set)
                 full_data_set.terrain_groups.update({terrain.get_id(): terrain_group})
 
-    @staticmethod
+    
     def link_building_upgrades(full_data_set):
         """
         Find building upgrades in the AgeUp techs and append them to the building lines.
@@ -1107,7 +1093,7 @@ class AoCProcessor(GenericProcessor):
                 upgraded_line.add_unit(upgrade_target)
                 full_data_set.unit_ref.update({upgrade_target_id: upgraded_line})
 
-    @staticmethod
+    
     def link_creatables(full_data_set):
         """
         Link creatable units and buildings to their creating entity. This is done
@@ -1140,7 +1126,7 @@ class AoCProcessor(GenericProcessor):
                     # try normal units
                     full_data_set.unit_lines[train_location_id].add_creatable(building_line)
 
-    @staticmethod
+    
     def link_researchables(full_data_set):
         """
         Link techs to their buildings. This is done
@@ -1158,7 +1144,7 @@ class AoCProcessor(GenericProcessor):
                 research_location_id = tech.get_research_location_id()
                 full_data_set.building_lines[research_location_id].add_researchable(tech)
 
-    @staticmethod
+    
     def link_civ_uniques(full_data_set):
         """
         Link civ bonus techs, unique units and unique techs to their civs.
@@ -1197,7 +1183,7 @@ class AoCProcessor(GenericProcessor):
                 civ_id = tech_group.get_civilization()
                 full_data_set.civ_groups[civ_id].add_unique_tech(tech_group)
 
-    @staticmethod
+    
     def link_gatherers_to_dropsites(full_data_set):
         """
         Link gatherers to the buildings they drop resources off. This is done
@@ -1222,7 +1208,7 @@ class AoCProcessor(GenericProcessor):
                         drop_site = full_data_set.building_lines[drop_site_id]
                         drop_site.add_gatherer_id(unit_id)
 
-    @staticmethod
+    
     def link_garrison(full_data_set):
         """
         Link a garrison unit to the lines that are stored and vice versa. This is done
@@ -1335,7 +1321,7 @@ class AoCProcessor(GenericProcessor):
                             unit_line.garrison_locations.append(garrison_line)
                             garrison_line.garrison_entities.append(unit_line)
 
-    @staticmethod
+    
     def link_trade_posts(full_data_set):
         """
         Link a trade post building to the lines that it trades with.
@@ -1365,7 +1351,7 @@ class AoCProcessor(GenericProcessor):
                 # Notify buiding
                 full_data_set.building_lines[trade_post_id].add_trading_line(unit_line)
 
-    @staticmethod
+    
     def link_repairables(full_data_set):
         """
         Set units/buildings as repairable

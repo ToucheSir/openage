@@ -12,24 +12,32 @@ import openage.convert.value_object.conversion.aoc.internal_nyan_names as aoc_in
 import openage.convert.value_object.conversion.de2.internal_nyan_names as de2_internal
 
 from .....log import info
-from .....util.ordered_set import OrderedSet
 from ....entity_object.conversion.aoc.genie_graphic import GenieGraphic
 from ....entity_object.conversion.aoc.genie_object_container import GenieObjectContainer
-from ....entity_object.conversion.aoc.genie_unit import GenieUnitObject, GenieAmbientGroup, GenieVariantGroup
+from ....entity_object.conversion.aoc.genie_unit import GenieUnitObject
 from ....service.debug_info import debug_converter_objects,\
     debug_converter_object_groups
 from ....service.read.nyan_api_loader import load_api
 from ..aoc.pregen_processor import AoCPregenSubprocessor
-from ..aoc.processor import AoCProcessor
+from ..generic.processor import GenericProcessor
 from .media_subprocessor import DE2MediaSubprocessor
 from .modpack_subprocessor import DE2ModpackSubprocessor
 from .nyan_subprocessor import DE2NyanSubprocessor
 
 
-class DE2Processor:
+class DE2Processor(GenericProcessor):
     """
     Main processor for converting data from DE2.
     """
+    def __init__(self, pregen_sub, nyan_sub, media_sub, modpack_sub, ambients, variants):
+        super().__init__(
+            AoCPregenSubprocessor(),
+            DE2NyanSubprocessor(),
+            DE2MediaSubprocessor(),
+            DE2MediaSubprocessor(),
+            {**aoc_internal.AMBIENT_GROUP_LOOKUPS, **de2_internal.AMBIENT_GROUP_LOOKUPS},
+            {**aoc_internal.VARIANT_GROUP_LOOKUPS, **de2_internal.VARIANT_GROUP_LOOKUPS}
+        )
 
     @classmethod
     def convert(cls, gamespec, args, string_resources, existing_graphics):
@@ -227,46 +235,3 @@ class DE2Processor:
         # Detect subgraphics
         for genie_graphic in full_data_set.genie_graphics.values():
             genie_graphic.detect_subgraphics()
-
-    @staticmethod
-    def create_ambient_groups(full_data_set):
-        """
-        Create ambient groups, mostly for resources and scenery.
-
-        :param full_data_set: GenieObjectContainer instance that
-                              contains all relevant data for the conversion
-                              process.
-        :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
-        """
-        ambient_ids = OrderedSet()
-        ambient_ids.update(aoc_internal.AMBIENT_GROUP_LOOKUPS.keys())
-        ambient_ids.update(de2_internal.AMBIENT_GROUP_LOOKUPS.keys())
-        genie_units = full_data_set.genie_units
-
-        for ambient_id in ambient_ids:
-            ambient_group = GenieAmbientGroup(ambient_id, full_data_set)
-            ambient_group.add_unit(genie_units[ambient_id])
-            full_data_set.ambient_groups.update({ambient_group.get_id(): ambient_group})
-            full_data_set.unit_ref.update({ambient_id: ambient_group})
-
-    @staticmethod
-    def create_variant_groups(full_data_set):
-        """
-        Create variant groups.
-
-        :param full_data_set: GenieObjectContainer instance that
-                              contains all relevant data for the conversion
-                              process.
-        :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
-        """
-        variants = {}
-        variants.update(aoc_internal.VARIANT_GROUP_LOOKUPS)
-        variants.update(de2_internal.VARIANT_GROUP_LOOKUPS)
-
-        for group_id, variant in variants.items():
-            variant_group = GenieVariantGroup(group_id, full_data_set)
-            full_data_set.variant_groups.update({variant_group.get_id(): variant_group})
-
-            for variant_id in variant[2]:
-                variant_group.add_unit(full_data_set.genie_units[variant_id])
-                full_data_set.unit_ref.update({variant_id: variant_group})

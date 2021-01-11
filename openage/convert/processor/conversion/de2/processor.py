@@ -11,13 +11,8 @@ Convert data from DE2 to openage formats.
 import openage.convert.value_object.conversion.aoc.internal_nyan_names as aoc_internal
 import openage.convert.value_object.conversion.de2.internal_nyan_names as de2_internal
 
-from .....log import info
 from ....entity_object.conversion.aoc.genie_graphic import GenieGraphic
-from ....entity_object.conversion.aoc.genie_object_container import GenieObjectContainer
 from ....entity_object.conversion.aoc.genie_unit import GenieUnitObject
-from ....service.debug_info import debug_converter_objects,\
-    debug_converter_object_groups
-from ....service.read.nyan_api_loader import load_api
 from ..aoc.pregen_processor import AoCPregenSubprocessor
 from ..generic.processor import GenericProcessor
 from .media_subprocessor import DE2MediaSubprocessor
@@ -29,12 +24,12 @@ class DE2Processor(GenericProcessor):
     """
     Main processor for converting data from DE2.
     """
-    def __init__(self, pregen_sub, nyan_sub, media_sub, modpack_sub, ambients, variants):
+    def __init__(self):
         super().__init__(
             AoCPregenSubprocessor(),
             DE2NyanSubprocessor(),
             DE2MediaSubprocessor(),
-            DE2MediaSubprocessor(),
+            DE2ModpackSubprocessor(),
             {**aoc_internal.AMBIENT_GROUP_LOOKUPS, **de2_internal.AMBIENT_GROUP_LOOKUPS},
             {**aoc_internal.VARIANT_GROUP_LOOKUPS, **de2_internal.VARIANT_GROUP_LOOKUPS}
         )

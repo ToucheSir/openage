@@ -9,167 +9,46 @@ Convert data from SWGB:CC to openage formats.
 """
 
 from .....log import info
-from ....entity_object.conversion.aoc.genie_object_container import GenieObjectContainer
 from ....entity_object.conversion.aoc.genie_tech import BuildingLineUpgrade,\
     AgeUpgrade, StatUpgrade, InitiatedTech, CivBonus
 from ....entity_object.conversion.aoc.genie_unit import GenieUnitTaskGroup,\
-    GenieVillagerGroup, GenieAmbientGroup, GenieVariantGroup,\
-    GenieBuildingLineGroup, GenieGarrisonMode
+    GenieVillagerGroup, GenieBuildingLineGroup, GenieGarrisonMode
 from ....entity_object.conversion.swgbcc.genie_tech import SWGBUnitUnlock,\
     SWGBUnitLineUpgrade
 from ....entity_object.conversion.swgbcc.genie_unit import SWGBUnitTransformGroup,\
     SWGBMonkGroup, SWGBUnitLineGroup, SWGBStackBuildingGroup
-from ....service.debug_info import debug_converter_objects,\
-    debug_converter_object_groups
-from ....service.read.nyan_api_loader import load_api
 from ....value_object.conversion.swgb.internal_nyan_names import MONK_GROUP_ASSOCS,\
     CIV_LINE_ASSOCS, AMBIENT_GROUP_LOOKUPS, VARIANT_GROUP_LOOKUPS,\
     CIV_TECH_ASSOCS
+from ..generic.processor import GenericProcessor
 from ..aoc.media_subprocessor import AoCMediaSubprocessor
-from ..aoc.processor import AoCProcessor
 from .modpack_subprocessor import SWGBCCModpackSubprocessor
 from .nyan_subprocessor import SWGBCCNyanSubprocessor
 from .pregen_subprocessor import SWGBCCPregenSubprocessor
 
 
-class SWGBCCProcessor:
+class SWGBCCProcessor(GenericProcessor):
     """
     Main processor for converting data from SWGB.
     """
+    def __init__(self):
+        # Wildlife
+        extra_units = (48, 594, 822, 833, 1203, 1249, 1363, 1364,
+                       1365, 1366, 1367, 1469, 1471, 1473, 1475)
+        building_repair_classes = (10, 18, 32, 33, 34, 35, 36, 53)
 
-    @classmethod
-    def convert(cls, gamespec, args, string_resources, existing_graphics):
-        """
-        Input game specification and media here and get a set of
-        modpacks back.
-
-        :param gamespec: Gamedata from empires.dat read in by the
-                         reader functions.
-        :type gamespec: class: ...dataformat.value_members.ArrayMember
-        :returns: A list of modpacks.
-        :rtype: list
-        """
-
-        info("Starting conversion...")
-
-        # Create a new container for the conversion process
-        dataset = cls._pre_processor(
-            gamespec,
-            args.game_version,
-            string_resources,
-            existing_graphics
+        super().__init__(
+            SWGBCCPregenSubprocessor(),
+            SWGBCCNyanSubprocessor(),
+            AoCMediaSubprocessor(),
+            SWGBCCModpackSubprocessor(),
+            AMBIENT_GROUP_LOOKUPS,
+            VARIANT_GROUP_LOOKUPS,
+            extra_units,
+            building_repair_classes
         )
-        debug_converter_objects(args.debugdir, args.debug_info, dataset)
 
-        # Create the custom openae formats (nyan, sprite, terrain)
-        dataset = cls._processor(dataset)
-        debug_converter_object_groups(args.debugdir, args.debug_info, dataset)
-
-        # Create modpack definitions
-        modpacks = cls._post_processor(dataset)
-
-        return modpacks
-
-    @classmethod
-    def _pre_processor(cls, gamespec, game_version, string_resources, existing_graphics):
-        """
-        Store data from the reader in a conversion container.
-
-        :param gamespec: Gamedata from empires.dat file.
-        :type gamespec: class: ...dataformat.value_members.ArrayMember
-        :param full_data_set: GenieObjectContainer instance that
-                              contains all relevant data for the conversion
-                              process.
-        :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
-        """
-        dataset = GenieObjectContainer()
-
-        dataset.game_version = game_version
-        dataset.nyan_api_objects = load_api()
-        dataset.strings = string_resources
-        dataset.existing_graphics = existing_graphics
-
-        info("Extracting Genie data...")
-
-        AoCProcessor.extract_genie_units(gamespec, dataset)
-        AoCProcessor.extract_genie_techs(gamespec, dataset)
-        AoCProcessor.extract_genie_effect_bundles(gamespec, dataset)
-        AoCProcessor.sanitize_effect_bundles(dataset)
-        AoCProcessor.extract_genie_civs(gamespec, dataset)
-        AoCProcessor.extract_age_connections(gamespec, dataset)
-        AoCProcessor.extract_building_connections(gamespec, dataset)
-        AoCProcessor.extract_unit_connections(gamespec, dataset)
-        AoCProcessor.extract_tech_connections(gamespec, dataset)
-        AoCProcessor.extract_genie_graphics(gamespec, dataset)
-        AoCProcessor.extract_genie_sounds(gamespec, dataset)
-        AoCProcessor.extract_genie_terrains(gamespec, dataset)
-
-        return dataset
-
-    @classmethod
-    def _processor(cls, full_data_set):
-        """
-        Transfer structures used in Genie games to more openage-friendly
-        Python objects.
-
-        :param full_data_set: GenieObjectContainer instance that
-                              contains all relevant data for the conversion
-                              process.
-        :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
-        """
-
-        info("Creating API-like objects...")
-
-        cls.create_unit_lines(full_data_set)
-        cls.create_extra_unit_lines(full_data_set)
-        cls.create_building_lines(full_data_set)
-        cls.create_villager_groups(full_data_set)
-        cls.create_ambient_groups(full_data_set)
-        cls.create_variant_groups(full_data_set)
-        AoCProcessor.create_terrain_groups(full_data_set)
-        cls.create_tech_groups(full_data_set)
-        AoCProcessor.create_civ_groups(full_data_set)
-
-        info("Linking API-like objects...")
-
-        AoCProcessor.link_building_upgrades(full_data_set)
-        AoCProcessor.link_creatables(full_data_set)
-        AoCProcessor.link_researchables(full_data_set)
-        AoCProcessor.link_civ_uniques(full_data_set)
-        AoCProcessor.link_gatherers_to_dropsites(full_data_set)
-        cls.link_garrison(full_data_set)
-        AoCProcessor.link_trade_posts(full_data_set)
-        cls.link_repairables(full_data_set)
-
-        info("Generating auxiliary objects...")
-
-        SWGBCCPregenSubprocessor.generate(full_data_set)
-
-        return full_data_set
-
-    @classmethod
-    def _post_processor(cls, full_data_set):
-        """
-        Convert API-like Python objects to nyan.
-
-        :param full_data_set: GenieObjectContainer instance that
-                              contains all relevant data for the conversion
-                              process.
-        :type full_data_set: ...dataformat.aoc.genie_object_container.GenieObjectContainer
-        """
-
-        info("Creating nyan objects...")
-
-        SWGBCCNyanSubprocessor.convert(full_data_set)
-
-        info("Creating requests for media export...")
-
-        AoCMediaSubprocessor.convert(full_data_set)
-
-        return SWGBCCModpackSubprocessor.get_modpacks(full_data_set)
-
-    @staticmethod
-    def create_unit_lines(full_data_set):
+    def create_unit_lines(self, full_data_set):
         """
         Sort units into lines, based on information in the unit connections.
 
@@ -294,28 +173,7 @@ class SWGBCCProcessor:
         for line in pre_unit_lines.values():
             full_data_set.unit_lines.update({line.get_head_unit_id(): line})
 
-    @staticmethod
-    def create_extra_unit_lines(full_data_set):
-        """
-        Create additional units that are not in the unit connections.
-
-        :param full_data_set: GenieObjectContainer instance that
-                              contains all relevant data for the conversion
-                              process.
-        :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
-        """
-        # Wildlife
-        extra_units = (48, 594, 822, 833, 1203, 1249, 1363, 1364,
-                       1365, 1366, 1367, 1469, 1471, 1473, 1475)
-
-        for unit_id in extra_units:
-            unit_line = SWGBUnitLineGroup(unit_id, full_data_set)
-            unit_line.add_unit(full_data_set.genie_units[unit_id])
-            full_data_set.unit_lines.update({unit_line.get_id(): unit_line})
-            full_data_set.unit_ref.update({unit_id: unit_line})
-
-    @staticmethod
-    def create_building_lines(full_data_set):
+    def create_building_lines(self, full_data_set):
         """
         Establish building lines, based on information in the building connections.
         Because of how Genie building lines work, this will only find the first
@@ -418,8 +276,7 @@ class SWGBCCProcessor:
                 building_line.add_unit(building, after=previous_building_id)
                 full_data_set.unit_ref.update({building_id: building_line})
 
-    @staticmethod
-    def create_villager_groups(full_data_set):
+    def create_villager_groups(self, full_data_set):
         """
         Create task groups and assign the relevant worker group to a
         villager group.
@@ -474,47 +331,7 @@ class SWGBCCProcessor:
         for unit_id in unit_ids:
             full_data_set.unit_ref.update({unit_id: villager})
 
-    @staticmethod
-    def create_ambient_groups(full_data_set):
-        """
-        Create ambient groups, mostly for resources and scenery.
-
-        :param full_data_set: GenieObjectContainer instance that
-                              contains all relevant data for the conversion
-                              process.
-        :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
-        """
-        ambient_ids = AMBIENT_GROUP_LOOKUPS.keys()
-        genie_units = full_data_set.genie_units
-
-        for ambient_id in ambient_ids:
-            ambient_group = GenieAmbientGroup(ambient_id, full_data_set)
-            ambient_group.add_unit(genie_units[ambient_id])
-            full_data_set.ambient_groups.update({ambient_group.get_id(): ambient_group})
-            full_data_set.unit_ref.update({ambient_id: ambient_group})
-
-    @staticmethod
-    def create_variant_groups(full_data_set):
-        """
-        Create variant groups.
-
-        :param full_data_set: GenieObjectContainer instance that
-                              contains all relevant data for the conversion
-                              process.
-        :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
-        """
-        variants = VARIANT_GROUP_LOOKUPS
-
-        for group_id, variant in variants.items():
-            variant_group = GenieVariantGroup(group_id, full_data_set)
-            full_data_set.variant_groups.update({variant_group.get_id(): variant_group})
-
-            for variant_id in variant[2]:
-                variant_group.add_unit(full_data_set.genie_units[variant_id])
-                full_data_set.unit_ref.update({variant_id: variant_group})
-
-    @staticmethod
-    def create_tech_groups(full_data_set):
+    def create_tech_groups(self, full_data_set):
         """
         Create techs from tech connections and unit upgrades/unlocks
         from unit connections.
@@ -693,9 +510,11 @@ class SWGBCCProcessor:
             civ_bonus = CivBonus(tech_id, civ_id, full_data_set)
             full_data_set.tech_groups.update({civ_bonus.get_id(): civ_bonus})
             full_data_set.civ_boni.update({civ_bonus.get_id(): civ_bonus})
+            
+    def create_node_tech_groups(self, full_data_set):
+        pass  # TODO does this need to be overwritten?
 
-    @staticmethod
-    def link_garrison(full_data_set):
+    def link_garrison(self, full_data_set):
         """
         Link a garrison unit to the lines that are stored and vice versa. This is done
         to provide quick access during conversion.
@@ -811,48 +630,3 @@ class SWGBCCProcessor:
                         if unit_id == unit_line.get_head_unit_id():
                             unit_line.garrison_locations.append(garrison_line)
                             garrison_line.garrison_entities.append(unit_line)
-
-    @staticmethod
-    def link_repairables(full_data_set):
-        """
-        Set units/buildings as repairable
-
-        :param full_data_set: GenieObjectContainer instance that
-                              contains all relevant data for the conversion
-                              process.
-        :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
-        """
-        villager_groups = full_data_set.villager_groups
-
-        repair_lines = {}
-        repair_lines.update(full_data_set.unit_lines)
-        repair_lines.update(full_data_set.building_lines)
-
-        repair_classes = []
-        for villager in villager_groups.values():
-            repair_unit = villager.get_units_with_command(106)[0]
-            unit_commands = repair_unit["unit_commands"].get_value()
-            for command in unit_commands:
-                type_id = command["type"].get_value()
-
-                if type_id != 106:
-                    continue
-
-                class_id = command["class_id"].get_value()
-                if class_id == -1:
-                    # Buildings/Siege
-                    repair_classes.append(10)
-                    repair_classes.append(18)
-                    repair_classes.append(32)
-                    repair_classes.append(33)
-                    repair_classes.append(34)
-                    repair_classes.append(35)
-                    repair_classes.append(36)
-                    repair_classes.append(53)
-
-                else:
-                    repair_classes.append(class_id)
-
-        for repair_line in repair_lines.values():
-            if repair_line.get_class_id() in repair_classes:
-                repair_line.repairable = True

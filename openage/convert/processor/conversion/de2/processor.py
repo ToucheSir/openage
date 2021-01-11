@@ -25,13 +25,19 @@ class DE2Processor(GenericProcessor):
     Main processor for converting data from DE2.
     """
     def __init__(self):
+        # TODO dedupe with AOC
+        extra_units = (48, 65, 594, 833)  # Wildlife
+        building_repair_classes = (3, 13, 52, 54, 55)
+
         super().__init__(
             AoCPregenSubprocessor(),
             DE2NyanSubprocessor(),
             DE2MediaSubprocessor(),
             DE2ModpackSubprocessor(),
             {**aoc_internal.AMBIENT_GROUP_LOOKUPS, **de2_internal.AMBIENT_GROUP_LOOKUPS},
-            {**aoc_internal.VARIANT_GROUP_LOOKUPS, **de2_internal.VARIANT_GROUP_LOOKUPS}
+            {**aoc_internal.VARIANT_GROUP_LOOKUPS, **de2_internal.VARIANT_GROUP_LOOKUPS},
+            extra_units,
+            building_repair_classes
         )
 
     def extract_genie_units(self, gamespec, full_data_set):

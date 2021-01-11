@@ -37,14 +37,29 @@ from ....service.debug_info import debug_converter_objects,\
     debug_converter_object_groups
 from ....service.read.nyan_api_loader import load_api
 
-class GenericProcessor:
-    def __init__(self, pregen_sub, nyan_sub, media_sub, modpack_sub, ambients, variants):
+from abc import ABC
+
+class GenericProcessor(ABC):
+    def __init__(
+        self,
+        pregen_sub,
+        nyan_sub,
+        media_sub,
+        modpack_sub,
+        ambients,
+        variants,
+        extra_units,
+        building_repair_classes
+    ):
         self.pregen_sub = pregen_sub
         self.nyan_sub = nyan_sub
         self.media_sub = media_sub
         self.modpack_sub = modpack_sub
         self.ambients = ambients
         self.variants = variants
+        # e.g. wildlife
+        self.extra_units = extra_units
+        self.building_repair_classes = building_repair_classes
 
     def convert(self, gamespec, args, string_resources, existing_graphics):
         """
@@ -544,9 +559,7 @@ class GenericProcessor:
                               process.
         :type full_data_set: class: ...dataformat.aoc.genie_object_container.GenieObjectContainer
         """
-        extra_units = (48, 65, 594, 833)  # Wildlife
-
-        for unit_id in extra_units:
+        for unit_id in self.extra_units:
             unit_line = GenieUnitLineGroup(unit_id, full_data_set)
             unit_line.add_unit(full_data_set.genie_units[unit_id])
             full_data_set.unit_lines.update({unit_line.get_id(): unit_line})
@@ -1380,11 +1393,7 @@ class GenericProcessor:
                 class_id = command["class_id"].get_value()
                 if class_id == -1:
                     # Buildings/Siege
-                    repair_classes.append(3)
-                    repair_classes.append(13)
-                    repair_classes.append(52)
-                    repair_classes.append(54)
-                    repair_classes.append(55)
+                    repair_classes.extend(self.repair_classes)
 
                 else:
                     repair_classes.append(class_id)

@@ -168,7 +168,7 @@ class GenericProcessor:
         return self.modpack_sub.get_modpacks(full_data_set)
 
     
-    def extract_genie_units(gamespec, full_data_set):
+    def extract_genie_units(self, gamespec, full_data_set):
         """
         Extract units from the game data.
 
@@ -207,7 +207,7 @@ class GenericProcessor:
             unit.add_member(unit_commands)
 
     
-    def extract_genie_techs(gamespec, full_data_set):
+    def extract_genie_techs(self, gamespec, full_data_set):
         """
         Extract techs from the game data.
 
@@ -230,7 +230,7 @@ class GenericProcessor:
             index += 1
 
     
-    def extract_genie_effect_bundles(gamespec, full_data_set):
+    def extract_genie_effect_bundles(self, gamespec, full_data_set):
         """
         Extract effects and effect bundles from the game data.
 
@@ -273,7 +273,7 @@ class GenericProcessor:
             index_bundle += 1
 
     
-    def extract_genie_civs(gamespec, full_data_set):
+    def extract_genie_civs(self, gamespec, full_data_set):
         """
         Extract civs from the game data.
 
@@ -299,7 +299,7 @@ class GenericProcessor:
             index += 1
 
     
-    def extract_age_connections(gamespec, full_data_set):
+    def extract_age_connections(self, gamespec, full_data_set):
         """
         Extract age connections from the game data.
 
@@ -317,7 +317,7 @@ class GenericProcessor:
             full_data_set.age_connections.update({connection.get_id(): connection})
 
     
-    def extract_building_connections(gamespec, full_data_set):
+    def extract_building_connections(self, gamespec, full_data_set):
         """
         Extract building connections from the game data.
 
@@ -336,7 +336,7 @@ class GenericProcessor:
             full_data_set.building_connections.update({connection.get_id(): connection})
 
     
-    def extract_unit_connections(gamespec, full_data_set):
+    def extract_unit_connections(self, gamespec, full_data_set):
         """
         Extract unit connections from the game data.
 
@@ -354,7 +354,7 @@ class GenericProcessor:
             full_data_set.unit_connections.update({connection.get_id(): connection})
 
     
-    def extract_tech_connections(gamespec, full_data_set):
+    def extract_tech_connections(self, gamespec, full_data_set):
         """
         Extract tech connections from the game data.
 
@@ -372,7 +372,7 @@ class GenericProcessor:
             full_data_set.tech_connections.update({connection.get_id(): connection})
 
     
-    def extract_genie_graphics(gamespec, full_data_set):
+    def extract_genie_graphics(self, gamespec, full_data_set):
         """
         Extract graphic definitions from the game data.
 
@@ -403,7 +403,7 @@ class GenericProcessor:
             genie_graphic.detect_subgraphics()
 
     
-    def extract_genie_sounds(gamespec, full_data_set):
+    def extract_genie_sounds(self, gamespec, full_data_set):
         """
         Extract sound definitions from the game data.
 
@@ -421,7 +421,7 @@ class GenericProcessor:
             full_data_set.genie_sounds.update({sound.get_id(): sound})
 
     
-    def extract_genie_terrains(gamespec, full_data_set):
+    def extract_genie_terrains(self, gamespec, full_data_set):
         """
         Extract terrains from the game data.
 
@@ -442,7 +442,7 @@ class GenericProcessor:
             index += 1
 
     
-    def create_unit_lines(full_data_set):
+    def create_unit_lines(self, full_data_set):
         """
         Sort units into lines, based on information in the unit connections.
 
@@ -535,7 +535,7 @@ class GenericProcessor:
         full_data_set.unit_lines_vertical_ref.update(pre_unit_lines)
 
     
-    def create_extra_unit_lines(full_data_set):
+    def create_extra_unit_lines(self, full_data_set):
         """
         Create additional units that are not in the unit connections.
 
@@ -553,7 +553,7 @@ class GenericProcessor:
             full_data_set.unit_ref.update({unit_id: unit_line})
 
     
-    def create_building_lines(full_data_set):
+    def create_building_lines(self, full_data_set):
         """
         Establish building lines, based on information in the building connections.
         Because of how Genie building lines work, this will only find the first
@@ -675,7 +675,7 @@ class GenericProcessor:
                 full_data_set.unit_ref.update({building_id: building_line})
 
     
-    def sanitize_effect_bundles(full_data_set):
+    def sanitize_effect_bundles(self, full_data_set):
         """
         Remove garbage data from effect bundles.
 
@@ -715,7 +715,7 @@ class GenericProcessor:
             bundle.sanitized = True
 
     
-    def create_tech_groups(full_data_set):
+    def create_tech_groups(self, full_data_set):
         """
         Create techs from tech connections and unit upgrades/unlocks
         from unit connections.
@@ -866,7 +866,7 @@ class GenericProcessor:
             full_data_set.civ_boni.update({civ_bonus.get_id(): civ_bonus})
 
     
-    def create_node_tech_groups(full_data_set):
+    def create_node_tech_groups(self, full_data_set):
         """
         Create tech condition chains for age upgrades
 
@@ -928,7 +928,7 @@ class GenericProcessor:
                 node_techs.remove(current_tech)
 
     
-    def create_civ_groups(full_data_set):
+    def create_civ_groups(self, full_data_set):
         """
         Create civilization groups from civ objects.
 
@@ -948,7 +948,7 @@ class GenericProcessor:
             index += 1
 
     
-    def create_villager_groups(full_data_set):
+    def create_villager_groups(self, full_data_set):
         """
         Create task groups and assign the relevant male and female group to a
         villager group.
@@ -1036,7 +1036,7 @@ class GenericProcessor:
                 full_data_set.unit_ref.update({variant_id: variant_group})
 
     
-    def create_terrain_groups(full_data_set):
+    def create_terrain_groups(self, full_data_set):
         """
         Create terrain groups.
 
@@ -1062,7 +1062,7 @@ class GenericProcessor:
                 full_data_set.terrain_groups.update({terrain.get_id(): terrain_group})
 
     
-    def link_building_upgrades(full_data_set):
+    def link_building_upgrades(self, full_data_set):
         """
         Find building upgrades in the AgeUp techs and append them to the building lines.
 
@@ -1094,7 +1094,7 @@ class GenericProcessor:
                 full_data_set.unit_ref.update({upgrade_target_id: upgraded_line})
 
     
-    def link_creatables(full_data_set):
+    def link_creatables(self, full_data_set):
         """
         Link creatable units and buildings to their creating entity. This is done
         to provide quick access during conversion.
@@ -1127,7 +1127,7 @@ class GenericProcessor:
                     full_data_set.unit_lines[train_location_id].add_creatable(building_line)
 
     
-    def link_researchables(full_data_set):
+    def link_researchables(self, full_data_set):
         """
         Link techs to their buildings. This is done
         to provide quick access during conversion.
@@ -1145,7 +1145,7 @@ class GenericProcessor:
                 full_data_set.building_lines[research_location_id].add_researchable(tech)
 
     
-    def link_civ_uniques(full_data_set):
+    def link_civ_uniques(self, full_data_set):
         """
         Link civ bonus techs, unique units and unique techs to their civs.
 
@@ -1184,7 +1184,7 @@ class GenericProcessor:
                 full_data_set.civ_groups[civ_id].add_unique_tech(tech_group)
 
     
-    def link_gatherers_to_dropsites(full_data_set):
+    def link_gatherers_to_dropsites(self, full_data_set):
         """
         Link gatherers to the buildings they drop resources off. This is done
         to provide quick access during conversion.
@@ -1209,7 +1209,7 @@ class GenericProcessor:
                         drop_site.add_gatherer_id(unit_id)
 
     
-    def link_garrison(full_data_set):
+    def link_garrison(self, full_data_set):
         """
         Link a garrison unit to the lines that are stored and vice versa. This is done
         to provide quick access during conversion.
@@ -1322,7 +1322,7 @@ class GenericProcessor:
                             garrison_line.garrison_entities.append(unit_line)
 
     
-    def link_trade_posts(full_data_set):
+    def link_trade_posts(self, full_data_set):
         """
         Link a trade post building to the lines that it trades with.
 
@@ -1352,7 +1352,7 @@ class GenericProcessor:
                 full_data_set.building_lines[trade_post_id].add_trading_line(unit_line)
 
     
-    def link_repairables(full_data_set):
+    def link_repairables(self, full_data_set):
         """
         Set units/buildings as repairable
 
